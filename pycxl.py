@@ -7,7 +7,7 @@
 #             for a system of arbitrary dimensions            #
 #                                                             #
 #  Copyright (c) 2023, Samad Hajinazar                        #
-#  samadh~at~buffalo.edu                   v1.0 - 12/02/2023  #
+#  samadh~at~buffalo.edu                   v1.1 - 10/31/2024  #
 # =========================================================== #
 
 #
@@ -44,12 +44,18 @@ from scipy.optimize import linprog
 # ====================================================
 # Global variables
 # ====================================================
+# Default resolution of output image (binary and ternary)
+idpi = 200
+# Default output image type: "png" "pdf"
+ifig = "pdf"
 # Default input file name
 ifil = "points.txt"
 # Threshold of zero distance above hull: [energy unit]*10^-6
 thrs = 1e-6
 # Numerical zero (values smaller than this are zero)
 zero = 1e-6
+# Infinity
+infi = float('inf')
 # Default value of distance above hull (if failed for a point)
 maxh = 99999999999999.0
 # Plot only points on the hull
@@ -65,6 +71,9 @@ dbug = False
 # The color map for plots (distance and form_ene outputs)
 cdst = 'jet'      # jet, viridis, inferno, Reds
 cfrm = 'coolwarm' # BrBG
+# Default ranges: applicable only to binary plots
+rang = [ infi, infi ] # y-range (set both to != infi to work)
+maxc = infi # max for color code (set to != infi to work)
 
 # ====================================================
 # Check if string variable is a legit number
@@ -425,13 +434,20 @@ def hull_plot_main(inhull, indist, inlabl, intags, flname):
   from matplotlib import colors
   if not pltf:
     vmin = indist.min()
-    vmax = indist.max()
+    if maxc != infi and maxc > vmin:
+      vmax = maxc
+    else:
+      vmax = indist.max()
     pvar = ("distance above hull",
             indist, cdst, colors.Normalize(vmin=vmin, vmax=vmax),
             'white', None, None)
   else:
     vmin = alpoints[:, -1].min()
     vmax = alpoints[:, -1].max()
+    if maxc != infi and maxc > vmin:
+      vmax = maxc
+    else:
+      vmax = indist.max()
     # This is to satisfy the requirement of vmin < 0.0 < vmax for this type of plots
     if vmin == 0.0:
       vmin -= zero
@@ -450,8 +466,12 @@ def hull_plot_main(inhull, indist, inlabl, intags, flname):
   # Plot all points
   ps = None
   if not plth:
-    ps = plt.scatter(alpoints[:, 0], alpoints[:, 1], alpha=0.7, s=70,
-                     c=pvar[1], cmap=pvar[2], norm=pvar[3], clip_on=False)
+    if rang[0] != infi and rang[1] != infi and rang[0] <= alpoints[:,1].min() and rang[1] > rang[0]:
+      ps = plt.scatter(alpoints[:, 0], np.ma.masked_outside(alpoints[:, 1], rang[0], rang[1]), alpha=0.7, s=70,
+                       c=pvar[1], cmap=pvar[2], norm=pvar[3], clip_on=False)
+    else:
+      ps = plt.scatter(alpoints[:, 0], alpoints[:, 1], alpha=0.7, s=70,
+                       c=pvar[1], cmap=pvar[2], norm=pvar[3], clip_on=False)
 
   # Plot hull points
   plt.scatter(hlpoints[:, 0], hlpoints[:, 1], s=70, clip_on=False,
@@ -467,7 +487,7 @@ def hull_plot_main(inhull, indist, inlabl, intags, flname):
     cb.ax.set_yscale('linear')
 
   ### Save the plot file
-  plt.savefig(flname+"_distances.pdf")
+  plt.savefig(flname+"_distances."+ifig, dpi=idpi)
 
 # ====================================================
 # Check if a specific point is inside a plane segment
@@ -580,7 +600,7 @@ def prnt_prog_hdrs():
   print("=====================================================")
   print("pycxl: Python script to calculate distance above hull")
   print("                                                     ")
-  print("Samad Hajinazar      samadh~at~buffalo.edu       v1.0")
+  print("Samad Hajinazar      samadh~at~buffalo.edu       v1.1")
   print("=====================================================")
   print()
 
