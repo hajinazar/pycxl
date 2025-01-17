@@ -7,7 +7,7 @@
 #             for a system of arbitrary dimensions            #
 #                                                             #
 #  Copyright (c) 2023, Samad Hajinazar                        #
-#  samadh~at~buffalo.edu                   v1.1 - 10/31/2024  #
+#  samadh~at~buffalo.edu                   v1.2 - 11/12/2024  #
 # =========================================================== #
 
 #
@@ -142,6 +142,14 @@ def read_inpt_file(flname):
   all_points = np.asarray(all_points)
   all_points = np.reshape(all_points, (-1, ndims))
 
+  ### Normalize input "coordinates" and "energy" of the points
+  for i in range(0, len(all_points)):
+    ele_sum = 0.0
+    for j in range(0, ndims - 1):
+      ele_sum += all_points[i][j]
+    for j in range(0, ndims):
+      all_points[i][j] /= ele_sum
+
   return all_points, all_labels, all_idtags
 
 # ====================================================
@@ -156,15 +164,18 @@ def chck_inpt_data(inpoints):
   for i in range(0, innum):
     if len(inpoints[i]) != indim:
       print("Error: number of elements is not the same %d" % (i+1))
+      print(inpoints[i])
       exit()
     tot_comp = 0.0
     for j in range(0, indim - 1):
       if inpoints[i][j] < 0.0:
         print("Error: fractional composition is negative %d" % (i+1))
+        print(inpoints[i])
         exit()
       tot_comp += abs(inpoints[i][j])
     if abs(1.0 - tot_comp) > zero:
       print("Error: sum of fractional compositions is not one %d" % (i+1))
+      print(inpoints[i])
       exit()
 
 # ====================================================
@@ -465,17 +476,28 @@ def hull_plot_main(inhull, indist, inlabl, intags, flname):
 
   # Plot all points
   ps = None
-  if not plth:
-    if rang[0] != infi and rang[1] != infi and rang[0] <= alpoints[:,1].min() and rang[1] > rang[0]:
-      ps = plt.scatter(alpoints[:, 0], np.ma.masked_outside(alpoints[:, 1], rang[0], rang[1]), alpha=0.7, s=70,
-                       c=pvar[1], cmap=pvar[2], norm=pvar[3], clip_on=False)
+
+  # Extract the default ranges from the actual hull data
+  minr = np.sign(alpoints[:,1].min()) * abs(alpoints[:,1].min()) * 1.1
+  maxr = np.sign(alpoints[:,1].max()) * abs(alpoints[:,1].max()) * 1.1
+
+  # Adjustments to plot range (only for 2D hull)
+
+  if numndims == 2 and (rang[0] != infi and rang[1] != infi and rang[1] > rang[0]):
+    if rang[0] <= alpoints[:,1].min():
+      minr = rang[0]
+      maxr = rang[1]
     else:
-      ps = plt.scatter(alpoints[:, 0], alpoints[:, 1], alpha=0.7, s=70,
-                       c=pvar[1], cmap=pvar[2], norm=pvar[3], clip_on=False)
+      print("Warning: actual data limits are: % lf and % lf! Setting only maximum." % (minr, maxr))
+      maxr = rang[1]
+
+  if not plth:
+    ps = plt.scatter(alpoints[:, 0], np.ma.masked_outside(alpoints[:, 1], minr, maxr), alpha=0.7, s=70,
+                     c=pvar[1], cmap=pvar[2], norm=pvar[3], clip_on=False)
 
   # Plot hull points
-  plt.scatter(hlpoints[:, 0], hlpoints[:, 1], s=70, clip_on=False,
-       c=pvar[4], edgecolors='black', cmap=pvar[5], norm=pvar[6], zorder=4)
+  plt.scatter(hlpoints[:, 0], np.ma.masked_outside(hlpoints[:, 1], minr, maxr), s=70, clip_on=False,
+              c=pvar[4], edgecolors='black', cmap=pvar[5], norm=pvar[6], zorder=4)
 
   # Plot hull planes
   for i in range(0, len(hlplanex)):
@@ -485,6 +507,9 @@ def hull_plot_main(inhull, indist, inlabl, intags, flname):
   if (not plth) or (pltf):
     cb = plt.colorbar(ps, label=pvar[0])
     cb.ax.set_yscale('linear')
+
+  # Apply plot range limits
+  plt.ylim(minr, maxr)
 
   ### Save the plot file
   plt.savefig(flname+"_distances."+ifig, dpi=idpi)
@@ -600,7 +625,7 @@ def prnt_prog_hdrs():
   print("=====================================================")
   print("pycxl: Python script to calculate distance above hull")
   print("                                                     ")
-  print("Samad Hajinazar      samadh~at~buffalo.edu       v1.1")
+  print("Samad Hajinazar      samadh~at~buffalo.edu       v1.2")
   print("=====================================================")
   print()
 
@@ -609,24 +634,47 @@ def prnt_prog_hdrs():
 # ====================================================
 def main_cmdl_task():
   ### Use global variables for possible input values
-  global ifil, plth, pltf, pltp, ptag, dbug
+  global ifil, plth, pltf, pltp, ptag, dbug, rang, maxc
 
   ### Read the input variables
   if len(sys.argv) >= 2:
     cmdl = sys.argv[1:]
-    for i in cmdl:
-      if i == '-f':
+    skip_next = False
+    for i in range(0, len(cmdl) - 1):
+      if skip_next:
+        skip_next = False
+        continue
+      if cmdl[i] == '-f':
         pltf = True
-      elif i == '-h':
+      elif cmdl[i] == '-h':
         plth = True
-      elif i == '-p':
+      elif cmdl[i] == '-p':
         pltp = True
-      elif i == '-t':
+      elif cmdl[i] == '-t':
         ptag = True
-      elif i == '-d':
+      elif cmdl[i] == '-d':
         dbug = True
+      elif cmdl[i] == '-r':
+        l = []
+        for t in cmdl[i+1].split():
+          try:
+            l.append(float(t))
+          except ValueError:
+            pass
+        if len(l) == 2:
+          rang[0] = l[0]; rang[1] = l[1]
+        skip_next = True
+      elif cmdl[i] == '-c':
+        l = []
+        try:
+          l.append(float(cmdl[i+1].split()[0]))
+        except ValueError:
+          pass
+        if len(l) == 1:
+          maxc = l[0]
+        skip_next = True
       elif ifil == "points.txt":
-        ifil = i
+        ifil = cmdl[i]
 
   ### Check if input file exists
   if not os.path.isfile(ifil):
