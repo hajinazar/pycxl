@@ -7,7 +7,7 @@
 #             for a system of arbitrary dimensions            #
 #                                                             #
 #  Copyright (c) 2023, Samad Hajinazar                        #
-#  samadh~at~buffalo.edu                   v1.2 - 11/12/2024  #
+#  samadh~at~buffalo.edu                   v1.3 - 11/12/2024  #
 # =========================================================== #
 
 #
@@ -275,30 +275,24 @@ def save_plot_data(inpoints, indistan, intags, inplanex, inplaney, flname):
 # Binary-specific plot adjustments
 # ====================================================
 def hull_plot_binr(iplt, inlbls):
-  xdel = 0.27
-  ydel = 0.025
   ### Binary specific settings
   if (plth) and (not pltf):
     iplt.figure(figsize=(5.5,4.0))
-    xdel = 0.12
-    ydel = 0.015
-  iplt.ylabel("formation energy")
-  iplt.xlim(0, 1)
 
-  ### Plot lines connecting end points (just to have a dashed line!)
-  epx0 = [ 0.000000, 1.000000 ]
-  epy0 = [ 0.000000, 0.000000 ]
-  iplt.plot(epx0[0:2], epy0[0:2], linestyle = 'dashed', c='black', lw=1)
-
-  ### Print the label of the end points
+  ### Generic element names (if they are not give!)
   if len(inlbls) < 2:
     inlbls.append('A')
     inlbls.append('B')
 
-  iplt.text(epx0[0] + 0.11, epy0[0] + ydel, inlbls[0], weight='bold',
-            transform=iplt.gcf().transFigure)
-  iplt.text(epx0[1] - xdel, epy0[1] + ydel, inlbls[1], weight='bold',
-            transform=iplt.gcf().transFigure)
+  ### Plot lines connecting end points (just to have a dashed line!)
+  iplt.xlim(0, 1)
+  epx0 = [ 0.000000, 1.000000 ]
+  epy0 = [ 0.000000, 0.000000 ]
+  iplt.plot(epx0[0:2], epy0[0:2], linestyle = 'dashed', c='black', lw=1)
+
+  ### Print labels etc
+  iplt.ylabel("formation energy")
+  iplt.xlabel("x in %s\u2081\u208B\u2093%s\u2093" % (inlbls[0],inlbls[1]))
 
 # ====================================================
 # Ternary-specific plot adjustments
