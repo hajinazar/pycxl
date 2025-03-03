@@ -619,7 +619,7 @@ def prnt_prog_hdrs():
   print("=====================================================")
   print("pycxl: Python script to calculate distance above hull")
   print("                                                     ")
-  print("Samad Hajinazar      samadh~at~buffalo.edu       v1.2")
+  print("Samad Hajinazar      samadh~at~buffalo.edu       v1.3")
   print("=====================================================")
   print()
 
