@@ -7,7 +7,7 @@
 #             for a system of arbitrary dimensions            #
 #                                                             #
 #  Copyright (c) 2023, Samad Hajinazar                        #
-#  samadh~at~buffalo.edu                   v1.3 - 11/12/2024  #
+#  samadh~at~buffalo.edu                   v1.4 - 05/22/2025  #
 # =========================================================== #
 
 #
@@ -619,7 +619,7 @@ def prnt_prog_hdrs():
   print("=====================================================")
   print("pycxl: Python script to calculate distance above hull")
   print("                                                     ")
-  print("Samad Hajinazar      samadh~at~buffalo.edu       v1.3")
+  print("Samad Hajinazar      samadh~at~buffalo.edu       v1.4")
   print("=====================================================")
   print()
 
@@ -628,13 +628,13 @@ def prnt_prog_hdrs():
 # ====================================================
 def main_cmdl_task():
   ### Use global variables for possible input values
-  global ifil, plth, pltf, pltp, ptag, dbug, rang, maxc
+  global ifil, ifig, plth, pltf, pltp, ptag, dbug, rang, maxc
 
   ### Read the input variables
   if len(sys.argv) >= 2:
     cmdl = sys.argv[1:]
     skip_next = False
-    for i in range(0, len(cmdl) - 1):
+    for i in range(0, len(cmdl)):
       if skip_next:
         skip_next = False
         continue
@@ -648,6 +648,8 @@ def main_cmdl_task():
         ptag = True
       elif cmdl[i] == '-d':
         dbug = True
+      elif cmdl[i] == '-g':
+        ifig = "png"
       elif cmdl[i] == '-r':
         l = []
         for t in cmdl[i+1].split():
