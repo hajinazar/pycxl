@@ -7,7 +7,7 @@
 #             for a system of arbitrary dimensions            #
 #                                                             #
 #  Copyright (c) 2023, Samad Hajinazar                        #
-#  samadh~at~buffalo.edu                   v1.5 - 05/22/2025  #
+#  samadh~at~buffalo.edu                   v1.6 - 05/22/2025  #
 # =========================================================== #
 
 #
@@ -50,6 +50,8 @@ idpi = 200
 ifig = "pdf"
 # True: transparent background of the output file
 ibkg = False
+# Color of the hull points and tie lines: a valid color name
+iclr = 'black'
 # Default input file name
 ifil = "points.txt"
 # Threshold of zero distance above hull: [energy unit]*10^-6
@@ -290,7 +292,7 @@ def hull_plot_binr(iplt, inlbls):
   iplt.xlim(0, 1)
   epx0 = [ 0.000000, 1.000000 ]
   epy0 = [ 0.000000, 0.000000 ]
-  iplt.plot(epx0[0:2], epy0[0:2], linestyle = 'dashed', c='black', lw=1)
+  iplt.plot(epx0[0:2], epy0[0:2], linestyle = 'dashed', c=iclr, lw=1)
 
   ### Print labels etc
   iplt.ylabel("formation energy")
@@ -309,13 +311,13 @@ def hull_plot_tern(iplt, inlbls):
   epx0 = [ 0.000000, 1.000000, 0.500000, 0.000000 ]
   epy0 = [ 0.000000, 0.000000, 0.866025, 0.000000 ]
   from matplotlib import patheffects
-  iplt.plot(epx0[0:2], epy0[0:2], linestyle='solid', c='black', lw=1,
+  iplt.plot(epx0[0:2], epy0[0:2], linestyle='solid', c=iclr, lw=1,
             path_effects=[patheffects.withTickedStroke
             (angle=242, spacing=25, length=.25, offset=(12.5,-1))])
-  iplt.plot(epx0[1:3], epy0[1:3], linestyle='solid', c='black', lw=1,
+  iplt.plot(epx0[1:3], epy0[1:3], linestyle='solid', c=iclr, lw=1,
             path_effects=[patheffects.withTickedStroke
             (angle=242, spacing=26, length=.25, offset=(-6,12.5))])
-  iplt.plot(epx0[2:4], epy0[2:4], linestyle='solid', c='black', lw=1,
+  iplt.plot(epx0[2:4], epy0[2:4], linestyle='solid', c=iclr, lw=1,
             path_effects=[patheffects.withTickedStroke
             (angle=235, spacing=26, length=.25, offset=(-7,-11.5))])
 
@@ -493,11 +495,11 @@ def hull_plot_main(inhull, indist, inlabl, intags, flname):
 
   # Plot hull points
   plt.scatter(hlpoints[:, 0], np.ma.masked_outside(hlpoints[:, 1], minr, maxr), s=70, clip_on=False,
-              c=pvar[4], edgecolors='black', cmap=pvar[5], norm=pvar[6], zorder=4)
+              c=pvar[4], edgecolors=iclr, cmap=pvar[5], norm=pvar[6], zorder=4)
 
   # Plot hull planes
   for i in range(0, len(hlplanex)):
-    plt.plot(hlplanex[i], hlplaney[i], c='black')
+    plt.plot(hlplanex[i], hlplaney[i], c=iclr)
 
   # Final adjustment: colorbar
   if (not plth) or (pltf):
@@ -621,7 +623,7 @@ def prnt_prog_hdrs():
   print("=====================================================")
   print("pycxl: Python script to calculate distance above hull")
   print("                                                     ")
-  print("Samad Hajinazar      samadh~at~buffalo.edu       v1.5")
+  print("Samad Hajinazar      samadh~at~buffalo.edu       v1.6")
   print("=====================================================")
   print()
 
@@ -630,7 +632,7 @@ def prnt_prog_hdrs():
 # ====================================================
 def main_cmdl_task():
   ### Use global variables for possible input values
-  global ifil, ifig, ibkg, plth, pltf, pltp, ptag, dbug, rang, maxc
+  global ifil, ifig, ibkg, iclr, plth, pltf, pltp, ptag, dbug, rang, maxc
 
   ### Read the input variables
   if len(sys.argv) >= 2:
@@ -654,13 +656,21 @@ def main_cmdl_task():
         ifig = "png"
       elif cmdl[i] == '-b':
         ibkg = True
+      elif cmdl[i] == '-e':
+        try:
+          iclr = cmdl[i+1]
+          skip_next = True
+        except (IndexError, ValueError):
+          print("Error: unknown edge color for -e option")
+          exit()
       elif cmdl[i] == '-r':
         l = []
         for t in cmdl[i+1].split():
           try:
             l.append(float(t))
-          except ValueError:
-            pass
+          except (IndexError, ValueError):
+            print("Error: unknown y axis range for option -r")
+            exit()
         if len(l) == 2:
           rang[0] = l[0]; rang[1] = l[1]
         skip_next = True
@@ -668,8 +678,9 @@ def main_cmdl_task():
         l = []
         try:
           l.append(float(cmdl[i+1].split()[0]))
-        except ValueError:
-          pass
+        except (IndexError, ValueError):
+          print("Error: unknown colorbar max for option -c")
+          exit()
         if len(l) == 1:
           maxc = l[0]
         skip_next = True
