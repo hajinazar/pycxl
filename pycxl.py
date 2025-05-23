@@ -7,7 +7,7 @@
 #             for a system of arbitrary dimensions            #
 #                                                             #
 #  Copyright (c) 2023, Samad Hajinazar                        #
-#  samadh~at~buffalo.edu                   v1.4 - 05/22/2025  #
+#  samadh~at~buffalo.edu                   v1.5 - 05/22/2025  #
 # =========================================================== #
 
 #
@@ -48,6 +48,8 @@ from scipy.optimize import linprog
 idpi = 200
 # Default output image type: "png" "pdf"
 ifig = "pdf"
+# True: transparent background of the output file
+ibkg = False
 # Default input file name
 ifil = "points.txt"
 # Threshold of zero distance above hull: [energy unit]*10^-6
@@ -472,8 +474,8 @@ def hull_plot_main(inhull, indist, inlabl, intags, flname):
   ps = None
 
   # Extract the default ranges from the actual hull data
-  minr = np.sign(alpoints[:,1].min()) * abs(alpoints[:,1].min()) * 1.1
-  maxr = np.sign(alpoints[:,1].max()) * abs(alpoints[:,1].max()) * 1.1
+  minr = np.sign(alpoints[:,1].min()) * abs(alpoints[:,1].min()) * 1.0
+  maxr = np.sign(alpoints[:,1].max()) * abs(alpoints[:,1].max()) * 1.0
 
   # Adjustments to plot range (only for 2D hull)
 
@@ -506,7 +508,7 @@ def hull_plot_main(inhull, indist, inlabl, intags, flname):
   plt.ylim(minr, maxr)
 
   ### Save the plot file
-  plt.savefig(flname+"_distances."+ifig, dpi=idpi)
+  plt.savefig(flname+"_distances."+ifig, dpi=idpi, transparent=ibkg)
 
 # ====================================================
 # Check if a specific point is inside a plane segment
@@ -619,7 +621,7 @@ def prnt_prog_hdrs():
   print("=====================================================")
   print("pycxl: Python script to calculate distance above hull")
   print("                                                     ")
-  print("Samad Hajinazar      samadh~at~buffalo.edu       v1.4")
+  print("Samad Hajinazar      samadh~at~buffalo.edu       v1.5")
   print("=====================================================")
   print()
 
@@ -628,7 +630,7 @@ def prnt_prog_hdrs():
 # ====================================================
 def main_cmdl_task():
   ### Use global variables for possible input values
-  global ifil, ifig, plth, pltf, pltp, ptag, dbug, rang, maxc
+  global ifil, ifig, ibkg, plth, pltf, pltp, ptag, dbug, rang, maxc
 
   ### Read the input variables
   if len(sys.argv) >= 2:
@@ -650,6 +652,8 @@ def main_cmdl_task():
         dbug = True
       elif cmdl[i] == '-g':
         ifig = "png"
+      elif cmdl[i] == '-b':
+        ibkg = True
       elif cmdl[i] == '-r':
         l = []
         for t in cmdl[i+1].split():

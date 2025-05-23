@@ -1,6 +1,6 @@
 # **pycxl: Python Wrapper for Computing the Convex Hull**
 
-*pycxl* (version 1.2) is a Python script that:
+*pycxl* (version 1.5) is a Python script that:
 
 * computes the convex hull for data points of a system of arbitrary 
   dimensions (e.g., binary, ternary, quaternary, etc.),
