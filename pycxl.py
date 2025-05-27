@@ -7,12 +7,12 @@
 #             for a system of arbitrary dimensions            #
 #                                                             #
 #  Copyright (c) 2023, Samad Hajinazar                        #
-#  samadh~at~buffalo.edu                   v1.6 - 05/22/2025  #
+#  samadh~at~buffalo.edu                   v1.7 - 05/27/2025  #
 # =========================================================== #
 
 #
 # Input:
-#   1) A text file with "fractional compositions and energies",
+#   1) A text file with "compositions and energies",
 #   2) Reference structures don't need to be specified,
 #   3) At least one of each elemental entries must be given.
 #
@@ -40,6 +40,7 @@ import os.path
 import numpy as np
 from scipy.spatial import ConvexHull, convex_hull_plot_2d
 from scipy.optimize import linprog
+import argparse
 
 # ====================================================
 # Global variables
@@ -58,8 +59,6 @@ ifil = "points.txt"
 thrs = 1e-6
 # Numerical zero (values smaller than this are zero)
 zero = 1e-6
-# Infinity
-infi = float('inf')
 # Default value of distance above hull (if failed for a point)
 maxh = 99999999999999.0
 # Plot only points on the hull
@@ -75,9 +74,9 @@ dbug = False
 # The color map for plots (distance and form_ene outputs)
 cdst = 'jet'      # jet, viridis, inferno, Reds
 cfrm = 'coolwarm' # BrBG
-# Default ranges: applicable only to binary plots
-rang = [ infi, infi ] # y-range (set both to != infi to work)
-maxc = infi # max for color code (set to != infi to work)
+# Default y-ranges: applicable only to binary plots
+yrng = [ None, None ] # y-range (set both to valid floats to work)
+maxc = None # max for color code (set to a valid float to work)
 
 # ====================================================
 # Check if string variable is a legit number
@@ -295,8 +294,9 @@ def hull_plot_binr(iplt, inlbls):
   iplt.plot(epx0[0:2], epy0[0:2], linestyle = 'dashed', c=iclr, lw=1)
 
   ### Print labels etc
+  iplt.rcParams['text.usetex'] = False
   iplt.ylabel("formation energy")
-  iplt.xlabel("x in %s\u2081\u208B\u2093%s\u2093" % (inlbls[0],inlbls[1]))
+  iplt.xlabel(r"$\mathrm{x\ in}\ \mathbf{%s}_\mathrm{1-x}\,\mathbf{%s}_\mathrm{x}$" % (inlbls[0],inlbls[1]))
 
 # ====================================================
 # Ternary-specific plot adjustments
@@ -443,7 +443,7 @@ def hull_plot_main(inhull, indist, inlabl, intags, flname):
   from matplotlib import colors
   if not pltf:
     vmin = indist.min()
-    if maxc != infi and maxc > vmin:
+    if maxc != None and maxc > vmin:
       vmax = maxc
     else:
       vmax = indist.max()
@@ -453,7 +453,7 @@ def hull_plot_main(inhull, indist, inlabl, intags, flname):
   else:
     vmin = alpoints[:, -1].min()
     vmax = alpoints[:, -1].max()
-    if maxc != infi and maxc > vmin:
+    if maxc != None and maxc > vmin:
       vmax = maxc
     else:
       vmax = indist.max()
@@ -476,18 +476,23 @@ def hull_plot_main(inhull, indist, inlabl, intags, flname):
   ps = None
 
   # Extract the default ranges from the actual hull data
-  minr = np.sign(alpoints[:,1].min()) * abs(alpoints[:,1].min()) * 1.0
-  maxr = np.sign(alpoints[:,1].max()) * abs(alpoints[:,1].max()) * 1.0
+  minr = np.sign(alpoints[:,1].min()) * abs(alpoints[:,1].min()) * 1.1
+  maxr = np.sign(alpoints[:,1].max()) * abs(alpoints[:,1].max()) * 1.1
 
   # Adjustments to plot range (only for 2D hull)
-
-  if numndims == 2 and (rang[0] != infi and rang[1] != infi and rang[1] > rang[0]):
-    if rang[0] <= alpoints[:,1].min():
-      minr = rang[0]
-      maxr = rang[1]
-    else:
-      print("Warning: actual data limits are: % lf and % lf! Setting only maximum." % (minr, maxr))
-      maxr = rang[1]
+  if numndims == 2:
+    if yrng[0] != None and yrng[1] == None:
+      minr = np.sign(alpoints[:,1].min()) * abs(alpoints[:,1].min()) * (1+yrng[0])
+      maxr = np.sign(alpoints[:,1].max()) * abs(alpoints[:,1].max()) * (1+yrng[0])
+    if yrng[0] != None and yrng[1] != None:
+      if yrng[0] > minr:
+        print("Warning: user y min %lf is larger  than data min %lf; using default min!" % (yrng[0], minr))
+      else:
+        minr = yrng[0]
+      if yrng[1] < minr:
+        print("Warning: user y max %lf is smaller than data min %lf; using default max!" % (yrng[1], minr))
+      else:
+        maxr = yrng[1]
 
   if not plth:
     ps = plt.scatter(alpoints[:, 0], np.ma.masked_outside(alpoints[:, 1], minr, maxr), alpha=0.7, s=70,
@@ -623,7 +628,7 @@ def prnt_prog_hdrs():
   print("=====================================================")
   print("pycxl: Python script to calculate distance above hull")
   print("                                                     ")
-  print("Samad Hajinazar      samadh~at~buffalo.edu       v1.6")
+  print("Samad Hajinazar      samadh~at~buffalo.edu       v1.7")
   print("=====================================================")
   print()
 
@@ -632,60 +637,61 @@ def prnt_prog_hdrs():
 # ====================================================
 def main_cmdl_task():
   ### Use global variables for possible input values
-  global ifil, ifig, ibkg, iclr, plth, pltf, pltp, ptag, dbug, rang, maxc
+  global ifil, ifig, ibkg, iclr, idpi, plth, pltf, pltp, ptag, dbug, yrng, maxc
 
-  ### Read the input variables
-  if len(sys.argv) >= 2:
-    cmdl = sys.argv[1:]
-    skip_next = False
-    for i in range(0, len(cmdl)):
-      if skip_next:
-        skip_next = False
-        continue
-      if cmdl[i] == '-f':
-        pltf = True
-      elif cmdl[i] == '-h':
-        plth = True
-      elif cmdl[i] == '-p':
-        pltp = True
-      elif cmdl[i] == '-t':
-        ptag = True
-      elif cmdl[i] == '-d':
-        dbug = True
-      elif cmdl[i] == '-g':
-        ifig = "png"
-      elif cmdl[i] == '-b':
-        ibkg = True
-      elif cmdl[i] == '-e':
-        try:
-          iclr = cmdl[i+1]
-          skip_next = True
-        except (IndexError, ValueError):
-          print("Error: unknown edge color for -e option")
-          exit()
-      elif cmdl[i] == '-r':
-        l = []
-        for t in cmdl[i+1].split():
-          try:
-            l.append(float(t))
-          except (IndexError, ValueError):
-            print("Error: unknown y axis range for option -r")
-            exit()
-        if len(l) == 2:
-          rang[0] = l[0]; rang[1] = l[1]
-        skip_next = True
-      elif cmdl[i] == '-c':
-        l = []
-        try:
-          l.append(float(cmdl[i+1].split()[0]))
-        except (IndexError, ValueError):
-          print("Error: unknown colorbar max for option -c")
-          exit()
-        if len(l) == 1:
-          maxc = l[0]
-        skip_next = True
-      elif ifil == "points.txt":
-        ifil = cmdl[i]
+  parser = argparse.ArgumentParser()
+  parser.add_argument(
+    "-y", "--yrange",
+    nargs="*",                # accept 0,1,2,… floats
+    type=float,
+    default=None,             # so we can detect “flag omitted” vs. “flag given but no values”
+    metavar=("MINR", "MAXR"),
+    help="min/max y range: '-y' : use defaults, '-y 1.3' : maxr=1.3, '-y 1.0 2.5' : minr=1.0 & maxr=2.5"
+  )
+  parser.add_argument("-c", "--colorbar", type=float, default=None, help="Max value of colorbar")
+  parser.add_argument("-f", "--formene", action="store_true", default=False, help="Use form enes to color code")
+  parser.add_argument("-o", "--onlyhull", action="store_true", default=False, help="Plot only on-hull points")
+  parser.add_argument("-p", "--plain", action="store_true", default=False, help="Plot a plain 3D plot: no grid lines")
+  parser.add_argument("-t", "--tags", action="store_true", default=False, help="Add tags to all input data")
+  parser.add_argument("-d", "--debug", action="store_true", default=False, help="Print debug info")
+  parser.add_argument("-g", "--graphics", action="store_true", default=False, help="Output png graphics instead of pdf")
+  parser.add_argument("-b", "--background", action="store_true", default=False, help="Transparent background in output plot")
+  parser.add_argument("-e", "--edgecolor", type=str, default="black", help="Edge color of hull points and lines")
+  parser.add_argument("-r", "--resolution", type=int, default=200, help="Resolution (dpi) of output plot")
+  parser.add_argument("-i", "--input", type=str, default="points.txt", help="Input file name")
+  args = parser.parse_args()
+
+  # Process the yrange for 2D plots
+  if args.yrange is None:
+    pass
+  elif len(args.yrange) == 1: # one float: offset
+    if args.yrange[0] <= 1.0 and args.yrange[0] >= 0.0:
+      yrng[0] = args.yrange[0]
+    else:
+      parser.error("argument -y/--yrange: the offset must be between 0 and 1")
+  elif len(args.yrange) == 2: # two floats: min,max
+    if args.yrange[1] > args.yrange[0]:
+      yrng = args.yrange
+    else:
+      parser.error("argument -y/--yrange: max should be larger than min")
+  else:
+    parser.error("argument -y/--yrange: two floats are needed")
+
+  # Process output file type
+  if args.graphics:
+    ifig = 'png'
+
+  # Process other inputs
+  maxc = args.colorbar
+  pltf = args.formene
+  plth = args.onlyhull
+  pltp = args.plain
+  ptag = args.tags
+  dbug = args.debug
+  ibkg = args.background
+  iclr = args.edgecolor
+  idpi = args.resolution
+  ifil = args.input
 
   ### Check if input file exists
   if not os.path.isfile(ifil):
