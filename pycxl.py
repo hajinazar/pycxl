@@ -485,12 +485,12 @@ def hull_plot_main(inhull, indist, inlabl, intags, flname):
       minr = np.sign(alpoints[:,1].min()) * abs(alpoints[:,1].min()) * (1+yrng[0])
       maxr = np.sign(alpoints[:,1].max()) * abs(alpoints[:,1].max()) * (1+yrng[0])
     if yrng[0] != None and yrng[1] != None:
-      if yrng[0] > minr:
-        print("Warning: user y min %lf is larger  than data min %lf; using default min!" % (yrng[0], minr))
+      if yrng[0] > alpoints[:,1].min():
+        print("Warning: user y min %lf is larger  than data min %lf; using default min!" % (yrng[0], alpoints[:,1].min()))
       else:
         minr = yrng[0]
-      if yrng[1] < minr:
-        print("Warning: user y max %lf is smaller than data min %lf; using default max!" % (yrng[1], minr))
+      if yrng[1] < alpoints[:,1].min():
+        print("Warning: user y max %lf is smaller than data min %lf; using default max!" % (yrng[1], alpoints[:,1].min()))
       else:
         maxr = yrng[1]
 
