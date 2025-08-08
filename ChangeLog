@@ -1,0 +1,8 @@
+=== Version 1.8
+1) The code is revised extensively
+
+2) More options for automatic plots are added:
+- '-l' : make plots without tie-lines or dashed grid lines
+- '-s' : show hull points as square
+- '-a' : fill the hull points with the actual color (i.e., distance from hull or form. energy) instead of the default white inner color
+- '-n' : remove all formatting from the hull points (i.e., no customized shape or highlighted edge, with their actual color)
