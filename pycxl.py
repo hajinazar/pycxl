@@ -7,7 +7,7 @@
 #             for a system of arbitrary dimensions            #
 #                                                             #
 #  Copyright (c) 2023, Samad Hajinazar                        #
-#  samadh~at~buffalo.edu                 v1.8.0 - 08/08/2025  #
+#  samadh~at~buffalo.edu                 v1.8.1 - 08/14/2025  #
 # =========================================================== #
 
 #
@@ -37,15 +37,14 @@
 
 import sys
 import os.path
-import numpy as np
-from scipy.spatial import ConvexHull, convex_hull_plot_2d
-from scipy.optimize import linprog
 import argparse
 
 # ====================================================
 # Global variables
 # ====================================================
 ### Internal variables
+# Main plot object
+plot = None
 # Threshold of zero distance above hull: [energy unit]*10^-6
 thrs = 1e-6
 # Numerical zero (values smaller than this are zero)
@@ -84,14 +83,16 @@ inln = False
 itag = False
 # Print some debug outputs
 idbg = False
-# Y-axis range for binary plots
-iyax = [ None, None ] # (set one/both to valid floats to work)
-# Max for color code
-icbr = None # (set to a valid float to work)
+# Y-axis range for binary plots (set one/both to valid floats to work)
+iyax = [ None, None ]
+# Max for color code (set to a valid float to work)
+icbr = None
 # Plot hull points as square
 isqr = False
 # No format for hull point shape (disables '-s', '-e' for points)
 infm = False
+# Fill "all" points with the given uniform color (must have a valid color name)
+iunf = None
 # Fill hull points with actual color (according to colorbar)
 iact = False
 
@@ -398,7 +399,7 @@ def save_data_plot(inpoints, indistan, intags, inplanex, inplaney, flname):
 # ====================================================
 # Return adjusted coords for points and hull vertices
 # ====================================================
-def hull_plot_data(inhull, indist):
+def calc_data_plot(inhull, indist):
   # Here, we produce adjusted x-y coords of data points and planes, ready
   #   to be plotted in a 2D plot, for both binary and ternary systems.
   # For each data point, we store adjusted coordinates,
@@ -483,11 +484,11 @@ def hull_plot_data(inhull, indist):
 # ====================================================
 # Binary-specific plot adjustments
 # ====================================================
-def hull_plot_binr(iplt, inlbls):
+def hull_plot_binr(plot, inlbls):
   ### Binary specific settings
-  #iplt.figure(figsize=(5.5,4.0))
-  iplt.tick_params(axis='both', labelsize=fs_tk_label)
-  iplt.xlim(0, 1)
+  #plot.figure(figsize=(5.5,4.0))
+  plot.tick_params(axis='both', labelsize=fs_tk_label)
+  plot.xlim(0, 1)
 
   ### Set the end points
   A = (0, 0)
@@ -495,7 +496,7 @@ def hull_plot_binr(iplt, inlbls):
 
   ### Plot the lines connecting end points (just to have a dashed line!)
   if (not inln) and (not ipln):
-    iplt.plot([A[0], B[0]], [A[1], B[1]], linestyle = 'dashed', c=iclr, lw=1)
+    plot.plot([A[0], B[0]], [A[1], B[1]], linestyle = 'dashed', c=iclr, lw=1)
 
   ### Generic element names (if they are not give!)
   if len(inlbls) < 2:
@@ -503,8 +504,8 @@ def hull_plot_binr(iplt, inlbls):
     inlbls.append('B')
 
   ### Print labels etc
-  iplt.ylabel("formation energy", fontsize=fs_ax_label)
-  iplt.xlabel(r"$\mathrm{x\ in}\ \mathbf{%s}_\mathrm{1-x}\,\mathbf{%s}_\mathrm{x}$" %
+  plot.ylabel("formation energy", fontsize=fs_ax_label)
+  plot.xlabel(r"$\mathrm{x\ in}\ \mathbf{%s}_\mathrm{1-x}\,\mathbf{%s}_\mathrm{x}$" %
               (inlbls[0],inlbls[1]), fontsize=fs_ax_label)
 
 # ====================================================
@@ -552,10 +553,10 @@ def make_tick_tern(ax, x1, y1, x2, y2, n_ticks, angle_deg, direction):
 # ====================================================
 # Ternary-specific plot adjustments
 # ====================================================
-def hull_plot_tern(iplt, inlbls):
+def hull_plot_tern(plot, inlbls):
   ### Ternary specific settings
-  #iplt.figure(figsize=(5,4.90))
-  iplt.axis('off')
+  #plot.figure(figsize=(5,4.90))
+  plot.axis('off')
 
   ### Set the end points
   A = (0  , 0       )
@@ -563,9 +564,9 @@ def hull_plot_tern(iplt, inlbls):
   C = (0.5, 0.866025)
 
   ### Plot the lines connecting end points
-  iplt.plot([A[0], B[0]], [A[1], B[1]], color=iclr, linewidth=1.0)
-  iplt.plot([B[0], C[0]], [B[1], C[1]], color=iclr, linewidth=1.0)
-  iplt.plot([C[0], A[0]], [C[1], A[1]], color=iclr, linewidth=1.0)
+  plot.plot([A[0], B[0]], [A[1], B[1]], color=iclr, linewidth=1.0)
+  plot.plot([B[0], C[0]], [B[1], C[1]], color=iclr, linewidth=1.0)
+  plot.plot([C[0], A[0]], [C[1], A[1]], color=iclr, linewidth=1.0)
 
   ### Print the label of the end points
   if len(inlbls) < 3:
@@ -573,17 +574,17 @@ def hull_plot_tern(iplt, inlbls):
     inlbls.append('B')
     inlbls.append('C')
 
-  iplt.text(A[0] - 0.07, A[1] + 0.04, inlbls[0], fontsize=fs_ax_label, weight='bold')
-  iplt.text(B[0] - 0.05, B[1] - 0.07, inlbls[1], fontsize=fs_ax_label, weight='bold')
-  iplt.text(C[0] + 0.05, C[1] - 0.01, inlbls[2], fontsize=fs_ax_label, weight='bold')
+  plot.text(A[0] - 0.07, A[1] + 0.04, inlbls[0], fontsize=fs_ax_label, weight='bold')
+  plot.text(B[0] - 0.05, B[1] - 0.07, inlbls[1], fontsize=fs_ax_label, weight='bold')
+  plot.text(C[0] + 0.05, C[1] - 0.01, inlbls[2], fontsize=fs_ax_label, weight='bold')
 
 
   ### Add ticks to connecting lines
   nticks = 10
 
-  make_tick_tern(iplt, *A, *B, n_ticks=nticks, angle_deg=60 , direction='inward')
-  make_tick_tern(iplt, *B, *C, n_ticks=nticks, angle_deg=180, direction='inward')
-  make_tick_tern(iplt, *C, *A, n_ticks=nticks, angle_deg=120, direction='outward')
+  make_tick_tern(plot, *A, *B, n_ticks=nticks, angle_deg=60 , direction='inward')
+  make_tick_tern(plot, *B, *C, n_ticks=nticks, angle_deg=180, direction='inward')
+  make_tick_tern(plot, *C, *A, n_ticks=nticks, angle_deg=120, direction='outward')
 
   ### Plot dashed grid lines if not plain (ternaries only) or no tie lines (all)
   if (not ipln) and (not inln):
@@ -596,7 +597,7 @@ def hull_plot_tern(iplt, inlbls):
       epy += [ A[1] + i * B[1]/nticks,  C[1] - i * C[1]/nticks ,
                A[1] + i * C[1]/nticks,  A[1] + i * C[1]/nticks ,
                A[1] + i * C[1]/nticks,  A[1] + i * B[1]/nticks ]
-    iplt.plot(epx, epy, linestyle='dashed', c='darkgray', lw=0.5, zorder=0)
+    plot.plot(epx, epy, linestyle='dashed', c='darkgray', lw=0.5, zorder=0)
 
 # ====================================================
 # Plot convex hull (only binary and ternary systems) 
@@ -610,25 +611,25 @@ def hull_plot_main(inhull, indist, inlabl, intags, flname):
 
   ### This works only for binary and ternary systems
   if numndims != 2 and numndims != 3:
-    exit()
+    return
 
   ### Find adjusted coords for data points and hull plane vertices
-  alpoints, nlpoints, hlpoints, hlplanex, hlplaney = hull_plot_data(inhull, indist)
+  alpoints, nlpoints, hlpoints, hlplanex, hlplaney = calc_data_plot(inhull, indist)
 
   ### Save output files for points coordinates and lines (e.g., gnuplot)
   save_data_plot(alpoints, indist, intags, hlplanex, hlplaney, flname)
 
-  ### Proceed with creating plots only if matplotlib exists
-  try:
-    import matplotlib.pyplot as plt
-    from matplotlib import colors
-  except ImportError:
-    exit()
+  ### Proceed with producing plot files only if matplotlib was found
+  if plot == None:
+    return
 
-  # A sanity check: is the user-provided color (if any) valid?
+  ### A sanity check: are the user-provided colors (if any) valid?
   if not colors.is_color_like(iclr):
-    print("Error: the color name '%s' is not valid" % iclr)
-    exit()
+    print("Error: the color name '%s' for edges  is not valid\n" % iclr)
+    return
+  if iunf != None and (not colors.is_color_like(iunf)):
+    print("Error: the color name '%s' for points is not valid\n" % iunf)
+    return
 
   ### Collect and process required data (x-y ranges and color-coding info)
   # Extract the default ranges from the actual hull data
@@ -684,78 +685,97 @@ def hull_plot_main(inhull, indist, inlabl, intags, flname):
 
   # Apply system-specific settings
   if numndims == 2:
-    hull_plot_binr(plt, inlabl)
+    hull_plot_binr(plot, inlabl)
   else:
-    hull_plot_tern(plt, inlabl)
+    hull_plot_tern(plot, inlabl)
 
   # Plot the tie lines (hull planes)
   if not inln:
     for i in range(0, len(hlplanex)):
-      plt.plot(hlplanex[i], hlplaney[i], c=iclr)
+      plot.plot(hlplanex[i], hlplaney[i], c=iclr)
 
   # Plot the points
-  mrkr = 'o'
-  size = 70
+  mrkr = 'o'  # shape
+  size = 70   # size
+  ewid = 1    # edge width
 
-  # (0) The basic plot of hull points (i.e., '-n' option)
-  ps = plt.scatter(hlpoints[:, 0], np.ma.masked_outside(hlpoints[:, 1], minr, maxr), s=size,
-                   clip_on=False, c=cb_pnts[1], cmap=cb_cmap, norm=cb_norm, alpha=0.7)
+  # (1) A "place-holder" to setup the colorbar
+  ps= plot.scatter(hlpoints[:, 0], np.ma.masked_outside(hlpoints[:, 1], minr, maxr),
+                   clip_on=False, zorder=0, alpha=0.7,  edgecolors=None, linewidth=ewid,
+                   s=0   , marker=mrkr, c=cb_pnts[1], cmap=cb_cmap, norm=cb_norm)
 
-  # (1) The non-hull points ('-o' disables this)
+  # (2) The plot for non-hull points
   if not iohl:
-    plt.scatter(nlpoints[:, 0], np.ma.masked_outside(nlpoints[:, 1], minr, maxr), s=size,
-                clip_on=False, c=cb_pnts[0], cmap=cb_cmap, norm=cb_norm, alpha=0.7)
+    if not infm and iunf:
+      plot.scatter(nlpoints[:, 0], np.ma.masked_outside(nlpoints[:, 1], minr, maxr),
+                   clip_on=False, zorder=None, alpha=0.7,  edgecolors=None, linewidth=ewid,
+                   s=size, marker=mrkr, c=iunf      , cmap=None   , norm=None)
+    else:
+      plot.scatter(nlpoints[:, 0], np.ma.masked_outside(nlpoints[:, 1], minr, maxr),
+                   clip_on=False, zorder=None, alpha=0.7,  edgecolors=None, linewidth=ewid,
+                   s=size, marker=mrkr, c=cb_pnts[0], cmap=cb_cmap, norm=cb_norm)
 
-  # (2) Highlighted plot of hull points (options '-s', '-a')
-  if not infm:
+  # (3) The plot for hull points (with/without formatting options)
+  if infm:
+    plot.scatter(hlpoints[:, 0], np.ma.masked_outside(hlpoints[:, 1], minr, maxr),
+                 clip_on=False, zorder=None, alpha=0.7,  edgecolors=None, linewidth=ewid,
+                 s=size, marker=mrkr, c=cb_pnts[1], cmap=cb_cmap, norm=cb_norm)
+  else:
+    #
+    if not iclr:
+      ewid = 0
     if isqr:
       mrkr = 's'
       size = 85
-    if iact:
-      plt.scatter(hlpoints[:, 0], np.ma.masked_outside(hlpoints[:, 1], minr, maxr), s=size,
-                  clip_on=False, edgecolors=iclr, marker=mrkr, zorder=5, c=cb_pnts[1], cmap=cb_cmap, norm=cb_norm)
+    #
+    size = size - ewid
+    if iunf:
+      plot.scatter(hlpoints[:, 0], np.ma.masked_outside(hlpoints[:, 1], minr, maxr),
+                   clip_on=False, zorder=5, alpha=None, edgecolors=iclr, linewidth=ewid,
+                   s=size, marker=mrkr, c=iunf      , cmap=None   , norm=None)
+    elif iact:
+      plot.scatter(hlpoints[:, 0], np.ma.masked_outside(hlpoints[:, 1], minr, maxr),
+                   clip_on=False, zorder=5, alpha=None, edgecolors=iclr, linewidth=ewid,
+                   s=size, marker=mrkr, c=cb_pnts[1], cmap=cb_cmap, norm=cb_norm)
     else:
-      plt.scatter(hlpoints[:, 0], np.ma.masked_outside(hlpoints[:, 1], minr, maxr), s=size,
-                  clip_on=False, c='white', edgecolors=iclr, marker=mrkr, zorder=5)
+      plot.scatter(hlpoints[:, 0], np.ma.masked_outside(hlpoints[:, 1], minr, maxr),
+                   clip_on=False, zorder=5, alpha=None, edgecolors=iclr, linewidth=ewid,
+                   s=size, marker=mrkr, c='white'   , cmap=None   , norm=None)
 
-  # Add the colorbar
-  cb = plt.colorbar(ps, label=cb_title)
-  cb.ax.set_yscale('linear')
-  '''
-  if (not iohl) or (iohl and ifrm):
-    cb = plt.colorbar(ps, label=cb_title)
-    cb.ax.set_yscale('linear')
-  else:
-    cb = plt.colorbar(ps, label="" , boundaries = [-zero, +zero])
+  # Add the colorbar (for uniform colors, only a placeholder)
+  if iunf:
+    cb = plot.colorbar(ps, label="" , boundaries = [-zero, +zero])
     cb.ax.tick_params(axis='y', length=0, labelright=False)
-  '''
+  else:
+    cb = plot.colorbar(ps, label=cb_title)
+    cb.ax.set_yscale('linear')
 
   # Apply plot range limits
-  plt.ylim(minr, maxr)
+  plot.ylim(minr, maxr)
 
   ### Save the plot to the output file
   if ipng:
-    plt.savefig(flname+"_distances.png", dpi=idpi, transparent=ibkg)
+    plot.savefig(flname+"_distances.png", dpi=idpi, transparent=ibkg)
   else:
-    plt.savefig(flname+"_distances.pdf", dpi=idpi, transparent=ibkg)
+    plot.savefig(flname+"_distances.pdf", dpi=idpi, transparent=ibkg)
 
 # ====================================================
 # Print the program header
 # ====================================================
 def prnt_prog_hdrs():
-  print("=====================================================")
-  print("pycxl: Python script to calculate distance above hull")
-  print("                                                     ")
-  print("Samad Hajinazar      samadh~at~buffalo.edu     v1.8.0")
-  print("=====================================================")
+  print("============================================================")
+  print("pycxl: Python script to calculate distance above convex hull")
+  print("                                                            ")
+  print("Samad Hajinazar          samadh~at~buffalo.edu        v1.8.1")
+  print("============================================================")
   print()
 
 # ====================================================
 # Main entry for command line task: process input, ...
 # ====================================================
-def main_cmdl_task():
+def chck_inpt_args():
   ### Use global variables for possible updating through command-line options
-  global iifl, ifrm, ipng, ibkg, idpi, iyax, icbr, iclr, iohl, ipln, inln, isqr, iact, infm, itag, idbg
+  global iifl, ifrm, ipng, ibkg, idpi, iyax, icbr, iclr, ipln, inln, iohl, isqr, iact, iunf, infm, itag, idbg
 
   parser = argparse.ArgumentParser()
   parser.add_argument("-i", "--input", type=str, default=iifl, help="Input file name")
@@ -773,11 +793,12 @@ def main_cmdl_task():
   )
   parser.add_argument("-c", "--colorbar", type=float, default=icbr, help="Max value of colorbar")
   parser.add_argument("-e", "--edgecolor", type=str, default=iclr, help="Edge color name for hull points and tie lines")
-  parser.add_argument("-o", "--onlyhull", action="store_true", default=iohl, help="Plot only hull points")
   parser.add_argument("-p", "--plain", action="store_true", default=ipln, help="Plot for ternaries with no grid lines")
   parser.add_argument("-l", "--lineless", action="store_true", default=inln, help="Plot with no tie line: only points")
+  parser.add_argument("-o", "--onlyhull", action="store_true", default=iohl, help="Plot only hull points")
   parser.add_argument("-s", "--squarepoints", action="store_true", default=isqr, help="Show hull points as square")
   parser.add_argument("-a", "--actualcolor", action="store_true", default=iact, help="Fill hull points with actual colors")
+  parser.add_argument("-u", "--uniformcolor", type=str, default=iunf, help="Fill all points with the given color")
   parser.add_argument("-n", "--noformathull", action="store_true", default=infm, help="No shape format for hull points")
   parser.add_argument("-t", "--tags", action="store_true", default=itag, help="Add tags to all input data")
   parser.add_argument("-d", "--debug", action="store_true", default=idbg, help="Print debug info")
@@ -812,15 +833,15 @@ def main_cmdl_task():
   iifl = args.input
   isqr = args.squarepoints
   iact = args.actualcolor
+  iunf = args.uniformcolor
   infm = args.noformathull
   itag = args.tags
   idbg = args.debug
 
-  ### Check if input file exists
-  if not os.path.isfile(iifl):
-    print("Error: input file '%s' does not exist" % (iifl))
-    exit()
-
+# ====================================================
+# Main entry for command line task: process input, ...
+# ====================================================
+def main_cmdl_task():
   ### Read all points from the input file
   inp_data, inp_lbls , inp_tags = read_inpt_file(iifl)
 
@@ -848,14 +869,45 @@ def main_cmdl_task():
   ### Print the results: points and their distance above hull
   save_data_dist(inp_data, inp_enes, out_dist, inp_tags, 'out')
 
-  ### Save the convex hull plot to file (only binary and ternary)
+  ### Save the convex hull data/plot to file (only binary and ternary)
   hull_plot_main(cnv_hull, out_dist, inp_lbls, inp_tags, 'out')
 
 # ====================================================
 # Command line call
 # ====================================================
 if __name__ == '__main__':
+  ### Intro ...
   prnt_prog_hdrs()
+  chck_inpt_args()
+
+  ### Check if required/optional modules exist
+  try:
+    import numpy as np
+  except ImportError:
+    print("Error: failed to load 'numpy'")
+    exit()
+  try:
+    from scipy.spatial import ConvexHull, convex_hull_plot_2d
+    from scipy.optimize import linprog
+  except ImportError:
+    print("Error: failed to load 'scipy'")
+    exit()
+  try:
+    import matplotlib.pyplot as plot
+    from matplotlib import colors
+  except ImportError:
+    print("Warning: failed to load 'matplotlib': no plot file will be created")
+
+  ### Some sanity checks
+  # Does the input file exist?
+  if not os.path.isfile(iifl):
+    print("Error: input file '%s' does not exist" % (iifl))
+    exit()
+  else:
+    print("Found input file '%s' ...\n" % (iifl))
+
+  ### Main task
   main_cmdl_task()
+
   print("All done!")
   exit()

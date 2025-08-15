@@ -1,6 +1,6 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15585321.svg)](https://doi.org/10.5281/zenodo.15585321)
 
-# **pycxl: Python Script to Calculate Distance Above Hull**
+# **pycxl: Python Script to Calculate Distance Above Convex Hull**
 
 *pycxl* (version 1.8) is a Python script that:
 
