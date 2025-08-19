@@ -6,3 +6,6 @@
 - '-s' : show hull points as square
 - '-a' : fill the hull points with the actual color (i.e., distance from hull or form. energy) instead of the default white inner color
 - '-n' : remove all formatting from the hull points (i.e., no customized shape or highlighted edge, with their actual color)
+
+3) Version 1.8.1: added '-u' option
+4) Version 1.8.2: internal code-changes: no new feature

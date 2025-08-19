@@ -3,11 +3,12 @@
 # =========================================================== #
 #                           pycxl                             #
 #                                                             #
-#    Python script to calculate distance above convex hull    #
+#            Python Script to Calculate Convex Hull           #
+#                   and distance above hull                   #
 #             for a system of arbitrary dimensions            #
 #                                                             #
 #  Copyright (c) 2023, Samad Hajinazar                        #
-#  samadh~at~buffalo.edu                 v1.8.1 - 08/14/2025  #
+#  samadh~at~buffalo.edu                 v1.8.2 - 08/19/2025  #
 # =========================================================== #
 
 #
@@ -34,6 +35,8 @@
 #   0.0   1.0   0.0  -0.1
 #   0.0   0.0   1.0   1.3 
 #
+# A nice compilation of matplotlib "Named Colors":
+#   https://stackoverflow.com/a/37232760
 
 import sys
 import os.path
@@ -623,14 +626,6 @@ def hull_plot_main(inhull, indist, inlabl, intags, flname):
   if plot == None:
     return
 
-  ### A sanity check: are the user-provided colors (if any) valid?
-  if not colors.is_color_like(iclr):
-    print("Error: the color name '%s' for edges  is not valid\n" % iclr)
-    return
-  if iunf != None and (not colors.is_color_like(iunf)):
-    print("Error: the color name '%s' for points is not valid\n" % iunf)
-    return
-
   ### Collect and process required data (x-y ranges and color-coding info)
   # Extract the default ranges from the actual hull data
   minr = np.sign(alpoints[:,1].min()) * abs(alpoints[:,1].min()) * 1.1
@@ -643,12 +638,12 @@ def hull_plot_main(inhull, indist, inlabl, intags, flname):
       maxr = np.sign(alpoints[:,1].max()) * abs(alpoints[:,1].max()) * (1+iyax[0])
     if iyax[0] != None and iyax[1] != None:
       if iyax[0] > alpoints[:,1].min():
-        print("Warning: user y min %lf is larger  than data min %lf; using default min" %
+        print("*** Warning: user y min %lf is larger  than data min %lf; using default min" %
               (iyax[0], alpoints[:,1].min()))
       else:
         minr = iyax[0]
       if iyax[1] < alpoints[:,1].min():
-        print("Warning: user y max %lf is smaller than data min %lf; using default max" %
+        print("*** Warning: user y max %lf is smaller than data min %lf; using default max" %
               (iyax[1], alpoints[:,1].min()))
       else:
         maxr = iyax[1]
@@ -763,11 +758,11 @@ def hull_plot_main(inhull, indist, inlabl, intags, flname):
 # Print the program header
 # ====================================================
 def prnt_prog_hdrs():
-  print("============================================================")
-  print("pycxl: Python script to calculate distance above convex hull")
-  print("                                                            ")
-  print("Samad Hajinazar          samadh~at~buffalo.edu        v1.8.1")
-  print("============================================================")
+  print("=============================================")
+  print("pycxl: Python Script to Calculate Convex Hull")
+  print("                                             ")
+  print("Samad Hajinazar  samadh~at~buffalo.edu v1.8.2")
+  print("=============================================")
   print()
 
 # ====================================================
@@ -792,13 +787,13 @@ def chck_inpt_args():
     help="y range - '-y 0.3' : relative change in actual values; '-y 1.0 2.5' : explicit values of min/max"
   )
   parser.add_argument("-c", "--colorbar", type=float, default=icbr, help="Max value of colorbar")
-  parser.add_argument("-e", "--edgecolor", type=str, default=iclr, help="Edge color name for hull points and tie lines")
   parser.add_argument("-p", "--plain", action="store_true", default=ipln, help="Plot for ternaries with no grid lines")
   parser.add_argument("-l", "--lineless", action="store_true", default=inln, help="Plot with no tie line: only points")
   parser.add_argument("-o", "--onlyhull", action="store_true", default=iohl, help="Plot only hull points")
-  parser.add_argument("-s", "--squarepoints", action="store_true", default=isqr, help="Show hull points as square")
+  parser.add_argument("-e", "--edgecolor", type=str, default=iclr, help="Color hull points and tie lines with the given 'Named' color")
   parser.add_argument("-a", "--actualcolor", action="store_true", default=iact, help="Fill hull points with actual colors")
-  parser.add_argument("-u", "--uniformcolor", type=str, default=iunf, help="Fill all points with the given color")
+  parser.add_argument("-u", "--uniformcolor", type=str, default=iunf, help="Fill all points with the given 'Named' color")
+  parser.add_argument("-s", "--squarepoints", action="store_true", default=isqr, help="Show hull points as square")
   parser.add_argument("-n", "--noformathull", action="store_true", default=infm, help="No shape format for hull points")
   parser.add_argument("-t", "--tags", action="store_true", default=itag, help="Add tags to all input data")
   parser.add_argument("-d", "--debug", action="store_true", default=idbg, help="Print debug info")
@@ -866,10 +861,15 @@ def main_cmdl_task():
     out_dist.append(find_dist_hull(cnv_hull, inp_data[i]))
   out_dist = np.array(out_dist)
 
-  ### Print the results: points and their distance above hull
+  ### Save the main results: points and their distance above hull
   save_data_dist(inp_data, inp_enes, out_dist, inp_tags, 'out')
 
-  ### Save the convex hull data/plot to file (only binary and ternary)
+  ### Check if it's a binary or ternary to proceed with plot files
+  ndim = len(inp_data[0]) - 1
+  if ndim != 2 and ndim != 3:
+    return
+
+  ### Save the 2D plot-ready hull data files and -possibly- output plot
   hull_plot_main(cnv_hull, out_dist, inp_lbls, inp_tags, 'out')
 
 # ====================================================
@@ -879,6 +879,13 @@ if __name__ == '__main__':
   ### Intro ...
   prnt_prog_hdrs()
   chck_inpt_args()
+
+  ### Check if the input file exist
+  if not os.path.isfile(iifl):
+    print("Error: input file '%s' does not exist" % (iifl))
+    exit()
+  else:
+    print("Found input file '%s' ...\n" % (iifl))
 
   ### Check if required/optional modules exist
   try:
@@ -896,15 +903,16 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plot
     from matplotlib import colors
   except ImportError:
-    print("Warning: failed to load 'matplotlib': no plot file will be created")
+    print("*** Warning: failed to load 'matplotlib'- no output plot will be created\n")
 
-  ### Some sanity checks
-  # Does the input file exist?
-  if not os.path.isfile(iifl):
-    print("Error: input file '%s' does not exist" % (iifl))
-    exit()
-  else:
-    print("Found input file '%s' ...\n" % (iifl))
+  ### Check if given colors are valid (only if matplotlib is found)
+  if plot:
+    if not colors.is_color_like(iclr):
+      print("Error: the color name '%s' for edges  is not valid\n" % iclr)
+      exit()
+    if iunf != None and (not colors.is_color_like(iunf)):
+      print("Error: the color name '%s' for points is not valid\n" % iunf)
+      exit()
 
   ### Main task
   main_cmdl_task()
